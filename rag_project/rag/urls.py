@@ -2,6 +2,7 @@ from django.urls import path
 
 from rag.views import (
     ChatView,
+    DBIngestView,
     DocumentDeleteView,
     DocumentListView,
     UploadView,
@@ -10,6 +11,9 @@ from rag.views import (
 urlpatterns = [
     # Upload a document for indexing
     path('upload/', UploadView.as_view(), name='upload'),
+
+    # Ingest data from the source database
+    path('db-ingest/', DBIngestView.as_view(), name='db-ingest'),
 
     # Ask a question (RAG)
     path('chat/', ChatView.as_view(), name='chat'),

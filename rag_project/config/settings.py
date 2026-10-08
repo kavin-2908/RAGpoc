@@ -86,6 +86,16 @@ DATABASES = {
 }
 
 # ---------------------------------------------------------------------------
+# Source Database (for data ingestion)
+# ---------------------------------------------------------------------------
+
+SOURCE_DB_NAME = os.getenv('SOURCE_DB_NAME', 'source_db')
+SOURCE_DB_USER = os.getenv('SOURCE_DB_USER', 'root')
+SOURCE_DB_PASSWORD = os.getenv('SOURCE_DB_PASSWORD', 'root')
+SOURCE_DB_HOST = os.getenv('SOURCE_DB_HOST', 'localhost')
+SOURCE_DB_PORT = os.getenv('SOURCE_DB_PORT', '3306')
+
+# ---------------------------------------------------------------------------
 # Django REST Framework
 # ---------------------------------------------------------------------------
 

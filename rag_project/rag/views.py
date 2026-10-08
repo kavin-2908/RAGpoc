@@ -62,6 +62,40 @@ class UploadView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
+class DBIngestView(APIView):
+    """
+    POST /api/db-ingest/
+
+    Connects to the source MySQL database, extracts all table data,
+    processes it through the RAG pipeline, and stores it in PostgreSQL.
+    """
+
+    def post(self, request):
+        try:
+            document_service = DocumentService()
+            result = document_service.process_database()
+            return Response(
+                {
+                    "message": "Database ingested successfully.",
+                    "document_id": result["document_id"],
+                    "chunks_created": result["chunks_created"]
+                },
+                status=status.HTTP_201_CREATED,
+            )
+
+        except ValueError as e:
+            logger.warning("DB ingestion failed (ValueError): %s", e)
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except Exception as e:
+            logger.exception("DB ingestion failed (unexpected): %s", e)
+            return Response(
+                {"error": "An unexpected error occurred while ingesting the database."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
 
 class ChatView(APIView):
     """

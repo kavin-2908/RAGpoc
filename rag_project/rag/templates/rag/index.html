@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Antigravity RAG Platform</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --glass-bg: rgba(30, 41, 59, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --primary: #8b5cf6;
+            --primary-hover: #7c3aed;
+            --secondary: #3b82f6;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --danger: #ef4444;
+            --success: #10b981;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(139, 92, 246, 0.15), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(59, 130, 246, 0.15), transparent 25%);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* Layout */
+        .app-container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            padding: 1.5rem;
+            gap: 1.5rem;
+        }
+
+        /* Glassmorphism Panel Base */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 380px;
+            flex-shrink: 0;
+            padding: 1.5rem;
+            gap: 1.5rem;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: white;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .brand i {
+            color: var(--primary);
+            font-size: 1.75rem;
+        }
+
+        .section-title {
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+            font-weight: 500;
+        }
+
+        /* Upload Zone */
+        .upload-zone {
+            border: 2px dashed rgba(139, 92, 246, 0.4);
+            border-radius: 16px;
+            padding: 2rem 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(139, 92, 246, 0.05);
+        }
+
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: var(--primary);
+            background: rgba(139, 92, 246, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .upload-icon {
+            font-size: 2.5rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        .upload-text {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+        }
+
+        .upload-text span {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.75rem 1.25rem;
+            border-radius: 12px;
+            border: none;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--primary);
+            color: white;
+        }
+
+        .btn-outline:hover {
+            background: rgba(139, 92, 246, 0.1);
+        }
+
+        /* Document List */
+        .doc-list-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin-right: -0.5rem;
+            padding-right: 0.5rem;
+        }
+
+        .doc-list-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .doc-list-container::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .doc-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 0.75rem 1rem;
+            border-radius: 12px;
+            margin-bottom: 0.5rem;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .doc-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .doc-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            overflow: hidden;
+        }
+
+        .doc-icon {
+            color: var(--secondary);
+            font-size: 1.25rem;
+        }
+
+        .doc-name {
+            font-size: 0.9rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .doc-delete {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: color 0.2s;
+            padding: 0.25rem;
+        }
+
+        .doc-delete:hover {
+            color: var(--danger);
+        }
+
+        /* Main Chat Area */
+        .main-content {
+            flex-grow: 1;
+        }
+
+        .chat-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .chat-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.75rem;
+            border-radius: 20px;
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--success);
+            box-shadow: 0 0 8px var(--success);
+            animation: pulse 2s infinite;
+        }
+
+        .chat-messages {
+            flex-grow: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .message {
+            max-width: 80%;
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+
+        .message-user {
+            align-self: flex-end;
+        }
+
+        .message-bot {
+            align-self: flex-start;
+        }
+
+        .message-content {
+            padding: 1rem 1.25rem;
+            border-radius: 18px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            position: relative;
+        }
+
+        .message-user .message-content {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message-bot .message-content {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-sources {
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .source-tag {
+            display: inline-block;
+            background: rgba(0,0,0,0.2);
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin: 2px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .chat-input-container {
+            padding: 1.25rem 1.5rem;
+            border-top: 1px solid var(--glass-border);
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .chat-input-wrapper {
+            display: flex;
+            gap: 1rem;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 0.5rem;
+            transition: border-color 0.3s;
+        }
+
+        .chat-input-wrapper:focus-within {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+        }
+
+        .chat-input {
+            flex-grow: 1;
+            background: transparent;
+            border: none;
+            color: white;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            outline: none;
+        }
+
+        .chat-input::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        .send-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .send-btn:hover {
+            background: var(--primary-hover);
+            transform: scale(1.05);
+        }
+        
+        .send-btn:disabled {
+            background: rgba(255,255,255,0.1);
+            color: rgba(255,255,255,0.3);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Notifications */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            color: white;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 1000;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast-success { background: linear-gradient(135deg, #059669, #10b981); }
+        .toast-error { background: linear-gradient(135deg, #dc2626, #ef4444); }
+        .toast-info { background: linear-gradient(135deg, #2563eb, #3b82f6); }
+
+        /* Loader */
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 4px 0;
+        }
+        .typing-indicator span {
+            width: 6px;
+            height: 6px;
+            background-color: var(--text-muted);
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="glass-panel sidebar">
+            <div class="brand">
+                <i class="fa-solid fa-cube"></i>
+                Antigravity RAG
+            </div>
+
+            <!-- Upload Section -->
+            <div>
+                <h3 class="section-title">Add Knowledge</h3>
+                <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                    <i class="fa-solid fa-cloud-arrow-up upload-icon"></i>
+                    <p class="upload-text">Drag & drop or <span>browse</span></p>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">PDF, DOCX, TXT, CSV, XLSX</p>
+                    <input type="file" id="fileInput" onchange="handleFileSelect(event)">
+                </div>
+            </div>
+
+            <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin: -0.5rem 0;">OR</div>
+
+            <!-- DB Ingest Section -->
+            <button class="btn btn-outline" id="dbIngestBtn" onclick="ingestDatabase()">
+                <i class="fa-solid fa-database"></i> Ingest Source Database
+            </button>
+
+            <!-- Document List -->
+            <div style="display: flex; flex-direction: column; flex-grow: 1; margin-top: 1rem; overflow: hidden;">
+                <h3 class="section-title" style="display: flex; justify-content: space-between;">
+                    Indexed Documents <span id="docCount">0</span>
+                </h3>
+                <div class="doc-list-container" id="docList">
+                    <!-- Docs injected here -->
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Chat Area -->
+        <main class="glass-panel main-content">
+            <header class="chat-header">
+                <div class="chat-title">Intelligence Interface</div>
+                <div class="status-badge">
+                    <div class="status-dot"></div>
+                    System Ready
+                </div>
+            </header>
+
+            <div class="chat-messages" id="chatMessages">
+                <div class="message message-bot">
+                    <div class="message-content">
+                        Hello! I am your Antigravity RAG Assistant. Upload some documents or ingest the database, then ask me anything about the data!
+                    </div>
+                </div>
+            </div>
+
+            <div class="chat-input-container">
+                <form class="chat-input-wrapper" onsubmit="sendMessage(event)">
+                    <input type="text" id="messageInput" class="chat-input" placeholder="Ask a question about your documents..." autocomplete="off">
+                    <button type="submit" class="send-btn" id="sendBtn">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        // getCSRF Token if needed for Django
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // DRF uses CSRF tokens based on settings, but typically API views are exempt or use token auth.
+        // Assuming session auth is active or DRF handles it
+        const csrftoken = getCookie('csrftoken');
+        const headers = csrftoken ? { 'X-CSRFToken': csrftoken } : {};
+
+        // API Base URL
+        const API_URL = '/api';
+
+        // --- UI Utils ---
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            toast.className = `toast toast-${type} show`;
+            toast.innerHTML = `<i class="fa-solid fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'circle-exclamation' : 'info-circle'}"></i> ${message}`;
+            
+            setTimeout(() => {
+                toast.className = 'toast';
+            }, 3000);
+        }
+
+        // --- Document Management ---
+        async function fetchDocuments() {
+            try {
+                const res = await fetch(`${API_URL}/documents/`, { headers });
+                if (!res.ok) throw new Error('Failed to fetch documents');
+                
+                const docs = await res.json();
+                renderDocuments(docs);
+            } catch (err) {
+                console.error(err);
+                showToast('Error loading documents', 'error');
+            }
+        }
+
+        function renderDocuments(docs) {
+            const container = document.getElementById('docList');
+            document.getElementById('docCount').innerText = docs.length;
+            
+            if (docs.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding: 2rem; color: var(--text-muted); font-size: 0.9rem;">No documents indexed yet.</div>';
+                return;
+            }
+
+            container.innerHTML = docs.map(doc => `
+                <div class="doc-item" id="doc-${doc.id}">
+                    <div class="doc-info">
+                        <i class="fa-solid ${getIconForType(doc.file_type)} doc-icon"></i>
+                        <span class="doc-name" title="${doc.filename}">${doc.filename}</span>
+                    </div>
+                    <button class="doc-delete" onclick="deleteDocument(${doc.id}, '${doc.filename}')" title="Delete">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function getIconForType(type) {
+            const map = {
+                'pdf': 'fa-file-pdf',
+                'docx': 'fa-file-word',
+                'csv': 'fa-file-csv',
+                'xlsx': 'fa-file-excel',
+                'txt': 'fa-file-lines',
+                'db': 'fa-database'
+            };
+            return map[type] || 'fa-file';
+        }
+
+        async function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            showToast(`Uploading and indexing ${file.name}...`, 'info');
+            const dropZone = document.getElementById('dropZone');
+            dropZone.style.opacity = '0.5';
+            dropZone.style.pointerEvents = 'none';
+
+            try {
+                const res = await fetch(`${API_URL}/upload/`, {
+                    method: 'POST',
+                    headers: headers,
+                    body: formData
+                });
+                
+                const data = await res.json();
+                
+                if (res.ok) {
+                    showToast(data.message || 'Document indexed successfully', 'success');
+                    fetchDocuments();
+                } else {
+                    throw new Error(data.error || 'Upload failed');
+                }
+            } catch (err) {
+                showToast(err.message, 'error');
+            } finally {
+                e.target.value = ''; // reset input
+                dropZone.style.opacity = '1';
+                dropZone.style.pointerEvents = 'auto';
+            }
+        }
+
+        async function ingestDatabase() {
+            const btn = document.getElementById('dbIngestBtn');
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Ingesting Database...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(`${API_URL}/db-ingest/`, { 
+                    method: 'POST',
+                    headers: headers 
+                });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    showToast(`Success: ${data.chunks_created} chunks created.`, 'success');
+                    fetchDocuments();
+                } else {
+                    throw new Error(data.error || 'Ingestion failed');
+                }
+            } catch (err) {
+                showToast(err.message, 'error');
+            } finally {
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+            }
+        }
+
+        async function deleteDocument(id, filename) {
+            if (!confirm(`Are you sure you want to delete "${filename}"?`)) return;
+            
+            try {
+                const res = await fetch(`${API_URL}/documents/${id}/`, { 
+                    method: 'DELETE',
+                    headers: headers
+                });
+                if (res.ok) {
+                    showToast('Document deleted', 'success');
+                    fetchDocuments();
+                } else {
+                    const data = await res.json();
+                    throw new Error(data.error || 'Failed to delete');
+                }
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        }
+
+        // --- Drag and Drop ---
+        const dropZone = document.getElementById('dropZone');
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length) {
+                document.getElementById('fileInput').files = files;
+                handleFileSelect({ target: { files: files } });
+            }
+        });
+
+        // --- Chat System ---
+        const chatMessages = document.getElementById('chatMessages');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+
+        function addMessage(content, type, sources = null) {
+            const div = document.createElement('div');
+            div.className = `message message-${type}`;
+            
+            let html = `<div class="message-content">${content.replace(/\n/g, '<br>')}</div>`;
+            
+            // Add sources if available and it's a bot message
+            if (sources && sources.length > 0 && type === 'bot') {
+                const uniqueSources = [...new Set(sources)];
+                const sourcesHtml = uniqueSources.map(s => `<span class="source-tag"><i class="fa-solid fa-file-lines" style="font-size:0.75rem; margin-right:3px;"></i>${s}</span>`).join('');
+                html = `<div class="message-content">
+                            ${content.replace(/\n/g, '<br>')}
+                            <div class="message-sources">
+                                <strong>Sources:</strong> ${sourcesHtml}
+                            </div>
+                        </div>`;
+            }
+            
+            div.innerHTML = html;
+            chatMessages.appendChild(div);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function showTypingIndicator() {
+            const div = document.createElement('div');
+            div.className = `message message-bot`;
+            div.id = 'typingIndicator';
+            div.innerHTML = `
+                <div class="message-content" style="padding: 1rem 1.5rem;">
+                    <div class="typing-indicator">
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
+            `;
+            chatMessages.appendChild(div);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function hideTypingIndicator() {
+            const el = document.getElementById('typingIndicator');
+            if (el) el.remove();
+        }
+
+        async function sendMessage(e) {
+            e.preventDefault();
+            const text = messageInput.value.trim();
+            if (!text) return;
+
+            // User message
+            addMessage(text, 'user');
+            messageInput.value = '';
+            messageInput.disabled = true;
+            sendBtn.disabled = true;
+
+            showTypingIndicator();
+
+            try {
+                const res = await fetch(`${API_URL}/chat/`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        ...headers
+                    },
+                    body: JSON.stringify({ question: text })
+                });
+                
+                const data = await res.json();
+                hideTypingIndicator();
+                
+                if (res.ok) {
+                    const sources = data.sources ? data.sources.map(s => s.filename) : [];
+                    addMessage(data.answer, 'bot', sources);
+                } else {
+                    addMessage('⚠️ ' + (data.error || 'Failed to get an answer.'), 'bot');
+                }
+            } catch (err) {
+                hideTypingIndicator();
+                addMessage('⚠️ Connection error. Make sure the RAG backend is running.', 'bot');
+            } finally {
+                messageInput.disabled = false;
+                sendBtn.disabled = false;
+                messageInput.focus();
+            }
+        }
+
+        // Init
+        document.addEventListener('DOMContentLoaded', fetchDocuments);
+    </script>
+</body>
+</html>

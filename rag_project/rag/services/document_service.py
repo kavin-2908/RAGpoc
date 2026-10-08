@@ -135,6 +135,60 @@ class DocumentService:
             self._delete_file(file_path)
             raise
 
+    def process_database(self) -> dict:
+        """
+        Extract text from the configured MySQL database, chunk it,
+        embed it, and store it in PostgreSQL.
+        
+        Returns:
+            dict with 'document_id' and 'chunks_created' count.
+        """
+        logger.info("Processing database ingestion")
+        
+        from rag.loaders.db_loader import DBLoader
+        loader = DBLoader()
+        
+        text = loader.load()
+        if not text or not text.strip():
+            raise ValueError("No text could be extracted from the database.")
+            
+        logger.info("Extracted %d characters from database", len(text))
+        
+        chunks = chunk_text(
+            text,
+            chunk_size=self.chunk_size,
+            overlap=self.chunk_overlap,
+        )
+        if not chunks:
+            raise ValueError("Database text could not be split into chunks.")
+            
+        logger.info("Created %d chunks from database", len(chunks))
+        
+        embeddings = self.embedding_service.embed_documents(chunks)
+        logger.info("Generated %d embeddings for database data", len(embeddings))
+        
+        # We store it under a virtual filename indicating it's from the database
+        virtual_filename = f"mysql_db_{settings.SOURCE_DB_NAME}"
+        
+        document = self.vector_service.store_document(
+            filename=virtual_filename,
+            file_type='db',
+            chunks=chunks,
+            embeddings=embeddings,
+        )
+        
+        logger.info(
+            "Stored database ingestion '%s' with %d chunks (id=%s)",
+            virtual_filename,
+            len(chunks),
+            document.id,
+        )
+        
+        return {
+            "document_id": document.id,
+            "chunks_created": len(chunks),
+        }
+
     def _get_file_type(self, filename: str) -> str:
         """
         Extract and validate the file extension.
