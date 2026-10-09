@@ -1,22 +1,19 @@
 """
-RAG Service — Orchestrates the Retrieval-Augmented Generation flow.
+RAG Service — Orchestrates the Retrieval-Augmented Generation flow via LangChain.
 
 Flow:
-    1. Embed the user's question.
-    2. Perform vector similarity search to get top-K chunks.
-    3. Construct the prompt with system rules, context, and question.
-    4. Send the prompt to the LLM.
-    5. Return the answer along with the source filenames.
-
-This service coordinates EmbeddingService, VectorService, and LLMService.
-It contains no DRF imports — pure Python.
+    1. Retrieve the most relevant chunks using LangChain's vectorstore as_retriever.
+    2. Construct the LCEL chain (Context + Question -> Prompt -> LLM).
+    3. Return the answer along with the source filenames.
 """
 
 import logging
 
 from django.conf import settings
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import PromptTemplate
+from langchain_core.runnables import RunnablePassthrough
 
-from rag.services.embedding_service import EmbeddingService
 from rag.services.llm_service import LLMService
 from rag.services.vector_service import VectorService
 
@@ -39,18 +36,26 @@ Answer:"""
 
 class RAGService:
     """
-    Orchestrates the chat flow for the Retrieval-Augmented Generation pipeline.
+    Orchestrates the chat flow using LangChain Expression Language (LCEL).
     """
 
     def __init__(self):
         self.top_k: int = settings.TOP_K_RESULTS
-        self.embedding_service = EmbeddingService()
         self.vector_service = VectorService()
+        self.vectorstore = self.vector_service.get_vectorstore()
+        
         self.llm_service = LLMService()
+        self.llm = self.llm_service.get_llm()
+        
+        self.prompt = PromptTemplate.from_template(PROMPT_TEMPLATE)
+        self.retriever = self.vectorstore.as_retriever(search_kwargs={"k": self.top_k})
+
+    def _format_docs(self, docs):
+        return "\n\n".join(doc.page_content for doc in docs)
 
     def answer_question(self, question: str) -> dict:
         """
-        Process a user question, retrieve context, and generate an answer.
+        Process a user question, retrieve context, and generate an answer using LangChain.
 
         Args:
             question: The user's input question string.
@@ -62,41 +67,32 @@ class RAGService:
         """
         logger.info("Received question: %s", question)
 
-        # Step 1: Generate embedding for the question
-        query_embedding = self.embedding_service.embed_query(question)
-
-        # Step 2: Retrieve the most relevant chunks from PostgreSQL
-        chunks = self.vector_service.similarity_search(
-            query_embedding=query_embedding,
-            top_k=self.top_k,
-        )
-
-        if not chunks:
+        # 1. Retrieve documents to extract sources
+        docs = self.retriever.invoke(question)
+        
+        if not docs:
             logger.info("No relevant chunks found in the database.")
             return {
-                "answer": "I could not find enough information in the uploaded documents. (The database is empty).",
+                "answer": "I could not find enough information in the uploaded documents.",
                 "sources": [],
             }
 
-        # Extract unique source filenames from the retrieved chunks
-        # Using a set preserves uniqueness, then we convert back to a list
-        sources = list(set([chunk.document.filename for chunk in chunks]))
+        # Extract unique source filenames from metadata
+        sources = list(set([doc.metadata.get('filename', 'Unknown') for doc in docs]))
         logger.info("Retrieved context from sources: %s", sources)
 
-        # Step 3: Build the prompt
-        # Join all chunk contents with a double newline to clearly separate them
-        context_text = "\n\n".join([chunk.content for chunk in chunks])
-        
-        prompt = PROMPT_TEMPLATE.format(
-            context=context_text,
-            question=question
+        # 2. Build the LCEL RAG chain
+        rag_chain = (
+            {"context": lambda x: self._format_docs(docs), "question": RunnablePassthrough()}
+            | self.prompt
+            | self.llm
+            | StrOutputParser()
         )
 
-        # Step 4: Send prompt to Ollama
-        answer = self.llm_service.generate(prompt)
+        # 3. Invoke the chain
+        answer = rag_chain.invoke(question)
 
-        # Step 5: Return answer and sources
         return {
-            "answer": answer,
+            "answer": answer.strip(),
             "sources": sources,
         }

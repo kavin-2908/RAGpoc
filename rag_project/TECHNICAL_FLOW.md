@@ -12,7 +12,7 @@ In this project, it is broken down into two main phases:
 1. **The Ingestion Phase (Upload):** Converting your documents into numerical representations (embeddings) and storing them.
 2. **The Retrieval & Generation Phase (Chat):** Searching those stored representations for relevance to a user's question, and feeding that specific information to the LLM to generate an answer.
 
-We enforce strict separation of concerns: **Views** handle HTTP requests, **Services** handle the core logic (embedding, LLM interaction, database searching), and **Loaders** handle file parsing. No complex, opaque frameworks like LangChain are used, making the process 100% transparent.
+We enforce strict separation of concerns: **Views** handle HTTP requests, **Services** handle the core logic (embedding, LLM interaction, database searching), and LangChain handles the document ingestion and chains.
 
 ---
 

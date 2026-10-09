@@ -2,7 +2,7 @@
 
 A production-quality, modular Retrieval-Augmented Generation (RAG) backend built from scratch to understand the internals of how RAG systems work.
 
-**No LangChain. No LangGraph. No complex abstractions. Pure Python and Django.**
+**Built with LangChain, Django, PostgreSQL, and pgvector.**
 
 ---
 
@@ -167,6 +167,6 @@ curl -X DELETE http://localhost:8000/api/documents/1/
 ## Code Quality & Design Principles Enforced
 
 - **Separation of Concerns:** Views only handle HTTP. Services handle business logic. Models handle data.
-- **No Magic:** Chunking, embedding, and prompting are written in explicit Python. No opaque LangChain pipelines.
+- **Framework:** Powered by LangChain for elegant, chain-based LLM orchestration and efficient document parsing.
 - **Robust Database:** Transactions (`@transaction.atomic`) ensure partial uploads are never saved. `bulk_create` ensures fast inserts.
 - **Strict Prompting:** The LLM is explicitly instructed to *only* use provided context, reducing hallucinations.

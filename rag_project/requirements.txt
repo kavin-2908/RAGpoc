@@ -20,9 +20,17 @@ python-docx>=1.1,<2.0
 openpyxl>=3.1,<4.0
 
 # --------------------------------------------------
-# Embeddings
+# Embeddings & AI Framework
 # --------------------------------------------------
 sentence-transformers>=3.0,<4.0
+langchain>=0.3.0
+langchain-community>=0.3.0
+langchain-core>=0.3.0
+langchain-postgres>=0.0.12
+langchain-huggingface>=0.1.0
+pypdf>=5.0.0
+unstructured>=0.16.0
+sqlalchemy>=2.0.0
 
 # --------------------------------------------------
 # HTTP (for Ollama)
