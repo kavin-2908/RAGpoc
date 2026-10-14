@@ -1,5 +1,6 @@
 import logging
 
+from django.db import transaction
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -147,9 +148,10 @@ class DocumentDeleteView(APIView):
     """
     DELETE /api/documents/<id>/
 
-    Deletes a document and all of its chunks (via CASCADE).
+    Deletes a document and all associated resources (chunks, embeddings, files).
     """
 
+    @transaction.atomic
     def delete(self, request, pk):
         try:
             document = Document.objects.get(pk=pk)
@@ -160,7 +162,14 @@ class DocumentDeleteView(APIView):
             )
 
         filename = document.filename
-        document.delete()
+        try:
+            document.delete()
+        except Exception as e:
+            logger.exception("Failed to delete document id %s: %s", pk, e)
+            return Response(
+                {"error": f"Failed to delete document: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
         logger.info("Deleted document: %s (id=%s)", filename, pk)
         return Response(
