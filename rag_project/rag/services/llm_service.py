@@ -19,11 +19,15 @@ class LLMService:
         self.base_url = settings.OLLAMA_URL.rstrip('/')
         self.model_name = settings.MODEL_NAME
         
-        # Initialize LangChain's Ollama wrapper
+        self.temperature = getattr(settings, 'LLM_TEMPERATURE', 0.3)
+        self.top_p = getattr(settings, 'LLM_TOP_P', 0.9)
+
+        # Initialize LangChain's Ollama wrapper with conversational parameters
         self.llm = Ollama(
             base_url=self.base_url,
             model=self.model_name,
-            temperature=0  # For more deterministic RAG answers
+            temperature=self.temperature,
+            top_p=self.top_p,
         )
 
     def get_llm(self):

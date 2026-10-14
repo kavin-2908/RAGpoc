@@ -72,15 +72,103 @@ class DocumentService:
             raise
 
     def process_database(self) -> dict:
-        # In a full LangChain implementation, you could use SQLDatabaseLoader
-        # But for now, we'll just raise NotImplementedError or build a simple loader
-        from langchain_community.utilities import SQLDatabase
-        from langchain_community.document_loaders.sqlalchemy import SQLAlchemyLoader
-        
-        # We store it under a virtual filename indicating it's from the database
+        """
+        Extract data from the configured MySQL database, format each row into
+        natural, semantically rich NLP descriptions, chunk it, embed it,
+        and store it in PostgreSQL vector database.
+        """
+        import pymysql
+        from langchain_core.documents import Document as LCDocument
+
+        logger.info(
+            "Connecting to source database %s on %s:%s",
+            settings.SOURCE_DB_NAME,
+            settings.SOURCE_DB_HOST,
+            settings.SOURCE_DB_PORT,
+        )
+
         virtual_filename = f"mysql_db_{settings.SOURCE_DB_NAME}"
-        
-        raise NotImplementedError("Database ingestion using LangChain is pending implementation.")
+
+        try:
+            connection = pymysql.connect(
+                host=settings.SOURCE_DB_HOST,
+                user=settings.SOURCE_DB_USER,
+                password=settings.SOURCE_DB_PASSWORD,
+                database=settings.SOURCE_DB_NAME,
+                port=int(settings.SOURCE_DB_PORT),
+                cursorclass=pymysql.cursors.DictCursor,
+            )
+        except Exception as e:
+            logger.error("Failed to connect to source database: %s", e)
+            raise ValueError(f"Database connection failed: {e}") from e
+
+        docs: list[LCDocument] = []
+
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SHOW TABLES")
+                tables = cursor.fetchall()
+                if not tables:
+                    raise ValueError(f"No tables found in database '{settings.SOURCE_DB_NAME}'.")
+
+                for table_dict in tables:
+                    table_name = list(table_dict.values())[0]
+                    logger.info("Ingesting table data from: %s", table_name)
+
+                    cursor.execute(f"SELECT * FROM `{table_name}`")
+                    rows = cursor.fetchall()
+
+                    for row in rows:
+                        # Convert database columns into clear, descriptive natural language sentences
+                        field_items = [
+                            f"{k.replace('_', ' ')} is {v}"
+                            for k, v in row.items()
+                            if v is not None and str(v).strip() != ""
+                        ]
+                        if not field_items:
+                            continue
+
+                        # Natural English representation of each record
+                        natural_row_text = (
+                            f"Record in table '{table_name}': "
+                            + ", ".join(field_items)
+                            + "."
+                        )
+
+                        docs.append(
+                            LCDocument(
+                                page_content=natural_row_text,
+                                metadata={
+                                    "filename": virtual_filename,
+                                    "table": table_name,
+                                    "source_type": "database",
+                                },
+                            )
+                        )
+        except Exception as e:
+            logger.error("Failed to query source database: %s", e)
+            raise ValueError(f"Database query failed: {e}") from e
+        finally:
+            connection.close()
+
+        if not docs:
+            raise ValueError("No table data could be extracted from the database.")
+
+        chunks = self.text_splitter.split_documents(docs)
+        if not chunks:
+            raise ValueError("Database text could not be split into chunks.")
+
+        self.vectorstore.add_documents(chunks)
+
+        document_record, _ = Document.objects.get_or_create(
+            filename=virtual_filename,
+            defaults={"file_type": "db"},
+        )
+
+        return {
+            "document_id": document_record.id,
+            "chunks_created": len(chunks),
+        }
 
     def _get_file_type(self, filename: str) -> str:
         if '.' not in filename:

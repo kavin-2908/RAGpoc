@@ -125,6 +125,8 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024
 
 OLLAMA_URL = os.getenv('OLLAMA_URL', 'http://localhost:11434')
 MODEL_NAME = os.getenv('MODEL_NAME', 'gemma3:4b')
+LLM_TEMPERATURE = float(os.getenv('LLM_TEMPERATURE', '0.3'))
+LLM_TOP_P = float(os.getenv('LLM_TOP_P', '0.9'))
 
 # ---------------------------------------------------------------------------
 # Embedding model configuration
