@@ -120,7 +120,52 @@ curl -X POST http://localhost:8000/api/upload/ \
 }
 ```
 
-### 2. Ask a Question
+### 2. Ingest Database Tables
+
+**Endpoint:** `POST /api/db-ingest/`  
+**Content-Type:** `application/json`
+
+You can ingest specific tables by name, or pass `*` / `"all table"` to ingest all tables.
+
+*cURL Example (Single Table):*
+```bash
+curl -X POST http://localhost:8000/api/db-ingest/ \
+  -H "Content-Type: application/json" \
+  -d '{"table": "student"}'
+```
+
+*cURL Example (Multiple Tables):*
+```bash
+curl -X POST http://localhost:8000/api/db-ingest/ \
+  -H "Content-Type: application/json" \
+  -d '{"tables": ["student", "fees"]}'
+```
+
+*cURL Example (All Tables via wildcard):*
+```bash
+curl -X POST http://localhost:8000/api/db-ingest/ \
+  -H "Content-Type: application/json" \
+  -d '{"tables": "*"}'
+```
+
+*Success Response (201):*
+```json
+{
+    "message": "Successfully ingested 1 table(s): student.",
+    "document_id": 4,
+    "filename": "mysql_db_college_student",
+    "tables_ingested": ["student"],
+    "chunks_created": 12
+}
+```
+
+**List Available Database Tables:** `GET /api/db-ingest/`
+```bash
+curl http://localhost:8000/api/db-ingest/
+```
+
+### 3. Ask a Question
+
 
 **Endpoint:** `POST /api/chat/`  
 **Content-Type:** `application/json`
@@ -142,7 +187,7 @@ curl -X POST http://localhost:8000/api/chat/ \
 }
 ```
 
-### 3. List Documents
+### 4. List Documents
 
 **Endpoint:** `GET /api/documents/`
 
@@ -151,7 +196,7 @@ curl -X POST http://localhost:8000/api/chat/ \
 curl http://localhost:8000/api/documents/
 ```
 
-### 4. Delete a Document
+### 5. Delete a Document
 
 **Endpoint:** `DELETE /api/documents/{id}/`
 

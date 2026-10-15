@@ -5,7 +5,10 @@ LLM Service — Communicates with the local Ollama instance via LangChain.
 import logging
 
 from django.conf import settings
-from langchain_community.llms import Ollama
+try:
+    from langchain_ollama import OllamaLLM
+except ImportError:
+    from langchain_community.llms import Ollama as OllamaLLM
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +26,7 @@ class LLMService:
         self.top_p = getattr(settings, 'LLM_TOP_P', 0.9)
 
         # Initialize LangChain's Ollama wrapper with conversational parameters
-        self.llm = Ollama(
+        self.llm = OllamaLLM(
             base_url=self.base_url,
             model=self.model_name,
             temperature=self.temperature,

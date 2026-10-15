@@ -1,5 +1,6 @@
 import logging
 
+from django.conf import settings
 from django.db import transaction
 from rest_framework import status
 from rest_framework.response import Response
@@ -8,6 +9,7 @@ from rest_framework.views import APIView
 from rag.models import Document
 from rag.serializers import (
     ChatSerializer,
+    DBIngestSerializer,
     DocumentSerializer,
     UploadSerializer,
 )
@@ -66,20 +68,61 @@ class UploadView(APIView):
 class DBIngestView(APIView):
     """
     POST /api/db-ingest/
+    Ingests specific tables or all tables from the source MySQL database.
+    Payload examples:
+      - {"tables": "student"}
+      - {"tables": ["student", "fees"]}
+      - {"tables": "*"} or {"tables": "all table"}
 
-    Connects to the source MySQL database, extracts all table data,
-    processes it through the RAG pipeline, and stores it in PostgreSQL.
+    GET /api/db-ingest/
+    Lists available tables from the source database.
     """
 
-    def post(self, request):
+    def get(self, request):
         try:
             document_service = DocumentService()
-            result = document_service.process_database()
+            tables = document_service.get_available_tables()
             return Response(
                 {
-                    "message": "Database ingested successfully.",
+                    "database": settings.SOURCE_DB_NAME,
+                    "tables": tables,
+                },
+                status=status.HTTP_200_OK,
+            )
+        except Exception as e:
+            logger.exception("Failed to fetch available tables: %s", e)
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    def post(self, request):
+        serializer = DBIngestSerializer(data=request.data if request.data else {})
+        serializer.is_valid(raise_exception=True)
+
+        # Extract table input from validated data or fallback to query params
+        validated = serializer.validated_data
+        tables_input = (
+            validated.get('tables')
+            or validated.get('table')
+            or validated.get('table_name')
+            or request.query_params.get('tables')
+            or request.query_params.get('table')
+            or request.query_params.get('table_name')
+            or '*'
+        )
+
+        try:
+            document_service = DocumentService()
+            result = document_service.process_database(tables=tables_input)
+            table_names_str = ", ".join(result["tables_ingested"])
+            return Response(
+                {
+                    "message": f"Successfully ingested {len(result['tables_ingested'])} table(s): {table_names_str}.",
                     "document_id": result["document_id"],
-                    "chunks_created": result["chunks_created"]
+                    "filename": result["filename"],
+                    "tables_ingested": result["tables_ingested"],
+                    "chunks_created": result["chunks_created"],
                 },
                 status=status.HTTP_201_CREATED,
             )
@@ -96,6 +139,7 @@ class DBIngestView(APIView):
                 {"error": "An unexpected error occurred while ingesting the database."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
 
 
 class ChatView(APIView):

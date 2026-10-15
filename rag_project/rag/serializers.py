@@ -80,3 +80,45 @@ class DocumentSerializer(serializers.ModelSerializer):
         model = Document
         fields = ['id', 'filename', 'file_type', 'uploaded_at']
         read_only_fields = fields
+
+
+class TableInputField(serializers.Field):
+    """
+    Flexible field that accepts string (e.g. 'users', 'users, orders', '*'),
+    or list of strings (e.g. ['users', 'orders']).
+    """
+    def to_internal_value(self, data):
+        if data is None:
+            return "*"
+        if isinstance(data, (list, tuple)):
+            return [str(item).strip() for item in data if str(item).strip()]
+        if isinstance(data, str):
+            return data.strip()
+        return str(data).strip()
+
+    def to_representation(self, value):
+        return value
+
+
+class DBIngestSerializer(serializers.Serializer):
+    """
+    Validates parameters for database ingestion.
+    Supports 'tables', 'table', or 'table_name' parameters.
+    Allows '*' or 'all table' to ingest all tables.
+    """
+    tables = TableInputField(
+        required=False,
+        default="*",
+        help_text="Table name(s) (string or list), or '*' / 'all table' to ingest all tables.",
+    )
+    table = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text="Single table name to ingest.",
+    )
+    table_name = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text="Alias for single table name.",
+    )
+

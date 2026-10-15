@@ -493,9 +493,39 @@
             <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin: -0.5rem 0;">OR</div>
 
             <!-- DB Ingest Section -->
-            <button class="btn btn-outline" id="dbIngestBtn" onclick="ingestDatabase()">
-                <i class="fa-solid fa-database"></i> Ingest Source Database
-            </button>
+            <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--glass-border); border-radius: 16px; padding: 1rem; display: flex; flex-direction: column; gap: 0.6rem;">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 0.4rem;">
+                        <i class="fa-solid fa-database" style="color: var(--secondary);"></i> Source Database
+                    </span>
+                    <span id="dbNameBadge" style="font-size: 0.72rem; background: rgba(59, 130, 246, 0.15); color: var(--secondary); padding: 2px 7px; border-radius: 6px; font-weight: 500;">DB</span>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+                    <label for="tableInput" style="font-size: 0.75rem; color: var(--text-muted); display: flex; justify-content: space-between;">
+                        <span>Target Table(s):</span>
+                        <span style="font-size: 0.7rem; color: var(--primary);">e.g. student or *</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="tableInput" 
+                        placeholder="Table name(s) or * for all" 
+                        value="*"
+                        style="width: 100%; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--glass-border); border-radius: 10px; padding: 0.55rem 0.75rem; font-size: 0.85rem; color: white; outline: none; transition: border-color 0.2s;"
+                        onfocus="this.style.borderColor='var(--primary)'"
+                        onblur="this.style.borderColor='var(--glass-border)'"
+                    >
+                </div>
+
+                <!-- Available Tables Quick Pills -->
+                <div id="tablePillsContainer" style="display: flex; flex-wrap: wrap; gap: 0.3rem;">
+                    <!-- Table pills loaded dynamically -->
+                </div>
+
+                <button class="btn btn-outline" id="dbIngestBtn" onclick="ingestDatabase()" style="margin-top: 0.1rem; padding: 0.6rem 1rem;">
+                    <i class="fa-solid fa-cloud-arrow-down"></i> Ingest Database
+                </button>
+            </div>
 
             <!-- Document List -->
             <div style="display: flex; flex-direction: column; flex-grow: 1; margin-top: 1rem; overflow: hidden;">
@@ -659,7 +689,43 @@
             }
         }
 
+        async function fetchAvailableTables() {
+            try {
+                const res = await fetch(`${API_URL}/db-ingest/`, { headers });
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.database) {
+                    const badge = document.getElementById('dbNameBadge');
+                    if (badge) badge.innerText = data.database;
+                }
+                if (data.tables && data.tables.length > 0) {
+                    const container = document.getElementById('tablePillsContainer');
+                    if (container) {
+                        let html = `<span style="font-size: 0.68rem; color: var(--text-muted); align-self: center; margin-right: 2px;">Quick:</span>`;
+                        html += `<button type="button" onclick="setTablePill('*')" style="font-size: 0.7rem; padding: 2px 6px; border-radius: 6px; border: 1px solid rgba(139, 92, 246, 0.4); background: rgba(139, 92, 246, 0.15); color: #c4b5fd; cursor: pointer; transition: all 0.2s;">* (All)</button>`;
+                        data.tables.forEach(table => {
+                            html += `<button type="button" onclick="setTablePill('${table}')" style="font-size: 0.7rem; padding: 2px 6px; border-radius: 6px; border: 1px solid var(--glass-border); background: rgba(255, 255, 255, 0.05); color: var(--text-muted); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--text-muted)'">${table}</button>`;
+                        });
+                        container.innerHTML = html;
+                    }
+                }
+            } catch (err) {
+                console.warn('Could not load tables:', err);
+            }
+        }
+
+        function setTablePill(tableName) {
+            const input = document.getElementById('tableInput');
+            if (input) {
+                input.value = tableName;
+                input.focus();
+            }
+        }
+
         async function ingestDatabase() {
+            const tableInput = document.getElementById('tableInput') ? document.getElementById('tableInput').value.trim() : '*';
+            const selectedTables = tableInput || '*';
+
             const btn = document.getElementById('dbIngestBtn');
             const originalHTML = btn.innerHTML;
             btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Ingesting Database...';
@@ -668,12 +734,19 @@
             try {
                 const res = await fetch(`${API_URL}/db-ingest/`, { 
                     method: 'POST',
-                    headers: headers 
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...headers
+                    },
+                    body: JSON.stringify({ tables: selectedTables })
                 });
                 const data = await res.json();
                 
                 if (res.ok) {
-                    showToast(`Success: ${data.chunks_created} chunks created.`, 'success');
+                    const tableNames = (data.tables_ingested && data.tables_ingested.length) 
+                        ? data.tables_ingested.join(', ') 
+                        : selectedTables;
+                    showToast(`Success: Ingested [${tableNames}] (${data.chunks_created} chunks)`, 'success');
                     fetchDocuments();
                 } else {
                     throw new Error(data.error || 'Ingestion failed');
@@ -851,7 +924,7 @@
                 hideTypingIndicator();
                 
                 if (res.ok) {
-                    const sources = data.sources ? data.sources.map(s => s.filename) : [];
+                    const sources = data.sources ? data.sources.map(s => typeof s === 'string' ? s : (s.filename || s)) : [];
                     addMessage(data.answer, 'bot', sources);
                 } else {
                     addMessage('⚠️ ' + (data.error || 'Failed to get an answer.'), 'bot');
@@ -867,7 +940,11 @@
         }
 
         // Init
-        document.addEventListener('DOMContentLoaded', fetchDocuments);
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchDocuments();
+            fetchAvailableTables();
+        });
     </script>
 </body>
 </html>
+
