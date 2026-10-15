@@ -3,6 +3,11 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+# Prevent OpenBLAS from exhausting virtual memory on Windows
+os.environ.setdefault('OPENBLAS_NUM_THREADS', '1')
+os.environ.setdefault('OMP_NUM_THREADS', '1')
+
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -131,6 +136,10 @@ OLLAMA_URL = os.getenv('OLLAMA_URL', 'http://localhost:11434')
 MODEL_NAME = os.getenv('MODEL_NAME', 'gemma3:4b')
 LLM_TEMPERATURE = float(os.getenv('LLM_TEMPERATURE', '0.3'))
 LLM_TOP_P = float(os.getenv('LLM_TOP_P', '0.9'))
+LLM_NUM_CTX = int(os.getenv('LLM_NUM_CTX', '2048'))
+LLM_NUM_PREDICT = int(os.getenv('LLM_NUM_PREDICT', '512'))
+
+
 
 # ---------------------------------------------------------------------------
 # Embedding model configuration

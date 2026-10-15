@@ -8,6 +8,9 @@ from langchain_huggingface import HuggingFaceEmbeddings
 logger = logging.getLogger(__name__)
 
 class VectorService:
+    _embeddings = None
+    _vectorstore = None
+
     def __init__(self):
         db_settings = settings.DATABASES['default']
         
@@ -22,16 +25,22 @@ class VectorService:
             f"postgresql+psycopg://{user}:{password}@{host}:{port}/{name}"
         )
         
-        self.embeddings = HuggingFaceEmbeddings(
-            model_name=settings.EMBEDDING_MODEL_NAME
-        )
+        if VectorService._embeddings is None:
+            logger.info("Initializing HuggingFace embedding model '%s' (cached for future requests)...", settings.EMBEDDING_MODEL_NAME)
+            VectorService._embeddings = HuggingFaceEmbeddings(
+                model_name=settings.EMBEDDING_MODEL_NAME
+            )
+        self.embeddings = VectorService._embeddings
         
-        self.vectorstore = PGVector(
-            embeddings=self.embeddings,
-            collection_name="rag_documents",
-            connection=self.connection_string,
-            use_jsonb=True,
-        )
+        if VectorService._vectorstore is None:
+            VectorService._vectorstore = PGVector(
+                embeddings=self.embeddings,
+                collection_name="rag_documents",
+                connection=self.connection_string,
+                use_jsonb=True,
+            )
+        self.vectorstore = VectorService._vectorstore
 
     def get_vectorstore(self):
         return self.vectorstore
+

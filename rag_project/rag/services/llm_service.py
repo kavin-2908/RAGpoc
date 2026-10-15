@@ -17,6 +17,7 @@ class LLMService:
     """
     Handles communication with the local Ollama LLM using LangChain.
     """
+    _llm = None
 
     def __init__(self):
         self.base_url = settings.OLLAMA_URL.rstrip('/')
@@ -24,14 +25,19 @@ class LLMService:
         
         self.temperature = getattr(settings, 'LLM_TEMPERATURE', 0.3)
         self.top_p = getattr(settings, 'LLM_TOP_P', 0.9)
+        self.num_ctx = getattr(settings, 'LLM_NUM_CTX', 2048)
+        self.num_predict = getattr(settings, 'LLM_NUM_PREDICT', 512)
 
-        # Initialize LangChain's Ollama wrapper with conversational parameters
-        self.llm = OllamaLLM(
-            base_url=self.base_url,
-            model=self.model_name,
-            temperature=self.temperature,
-            top_p=self.top_p,
-        )
+        if LLMService._llm is None:
+            LLMService._llm = OllamaLLM(
+                base_url=self.base_url,
+                model=self.model_name,
+                temperature=self.temperature,
+                top_p=self.top_p,
+                num_ctx=self.num_ctx,
+                num_predict=self.num_predict,
+            )
+        self.llm = LLMService._llm
 
     def get_llm(self):
         """
